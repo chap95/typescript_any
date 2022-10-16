@@ -127,3 +127,72 @@ function someFunc(value: unknown) {
 }
 ```
 앞에서 본 예시에 의하면 `unknown` 타입을 사용했을 때는 타입을 추론해줄 필요가 있다. `unknown` 타입을 사용하려면 특정한 타입으로 타입을 좁혀주어야 좁혀진 타입에 따른 동작을 수행할 수 있기 때문이다.
+
+여기까지 봤을 때는 `any` 타입이 집합의 개념으로 표현가능할 줄 알았다. 하지만 `any` 타입과 `unknown` 타입은 개념적으로 다른 느낌을 가지고 있는 것 같다.
+
+```ts
+type TAnyAnd = any & string;// any
+type TAnyOr = any | string;// any
+
+type TUnknownAnd = unknown & string;// string
+type TUnknownOr = unknown | string;// unknown
+```
+
+`any` 타입이 모든 타입의 super type으로 집합으로 표현이 가능하다면 위 코드는 이해가 안되는 부분이 있다. `unknown`은 `string` intersecting 하면 `string` 이 나오지만 `any` 는 `any` 가 나오게 된다. 이는 `any` 가 집합의 개념으로 접근하는게 아니라 타입 체킹관점으로 타입 체킹을 무효화 시키기 때문에 어떠한 타입을 intersect 또는 union 하던 `any` 로 추론되는 것이 아닐까 생각한다.
+
+### never
+`never` 타입은 집합개념에서 공집합을 의미한다.
+```ts
+type TIntersectStringAndNumber = string & number;
+```
+위 코드에서 추론된 타입은 `never` 이다. 문자열과 숫자간의 교집합은 존재하지 않기 때문에 `never` 타입으로 추론된 것이다. 없음을 의미하는 `never` 타입은 쓸모가 없어 보이는데 왜 타입으로 나온것일까?
+
+없는 상태도 필요하다. 아래의 예제 코드를 보자
+
+```ts
+function getColorHEXCode(color: string){
+  switch(color){
+    case "red":
+      return "#FF0000";
+    case "blue":
+      return "0000FF";
+    // ...add all of color
+    default:
+      return "none";
+  }
+}
+```
+
+색상의 이름을 인자로 받아서 색상에 해당하는 hex code를 return 하는 함수가 있다고 가정해 보자. 사람들이 자주사용하는 색상들은 우리가 대응이 가능하다. 하지만 이 세계에 존재하는 모든 색상에 대해서 대응하는 (물론 모든 색상에 이름이 붙여져있지는 않을 것 같다.) 코드를 만들기에는 무리가 있다. 이 때 함수의 인자의 타입을 `case` 애 해당하는 `string` 으로 좁히는 것도 방법이긴 하지만 색상이 추가 될 때마다 함수와 타입을 수정해주어야 하는 불편함이 존재한다. 이럴 때 `never` 타입을 이용하면 된다.
+
+```ts
+function notToConvertToHex(color: string) {
+  throw(new Error(`${color}에해당하는 hex code 존재하지 않습니다.`))
+}
+```
+위와 같은 함수를 만들어 `default`에 넣어주자
+
+```ts
+function getColorHEXCode(color: string){
+  switch(color){
+    case "red":
+      return "#FF0000";
+    case "blue":
+      return "0000FF";
+    // ...add all of color
+    default:
+      return notToConvertToHex(color);
+  }
+}
+```
+
+이렇게 하면 현재 지원하는 color 가 들어왔을 때를 제외하고 `error` 를 띄울 수 있다. 그렇다면 `getColorHEXCode` 의 return 타입은 어떻게 될까? `void | "#FF0000" | "0000FF"` 처럼 된다. 하지만 뭔가 찜찜하다. `void` 가 맞긴하지만 정확히는 지원하는 색상이 들어왔을 때만 return을 하는데 `void` 라고 엉뚱한 타입 또한 return 하는 것 처럼 되어 있다.
+이 때 `notToConvertToHEX` 함수의 return 타입을 `never` 로 설정해주면 된다.
+```ts
+function noToConvertToHEX(color: string): never {
+  ...
+}
+```
+이렇게 해주면 `getColorHEXCode`의 return 타입이 지원하는 color에 해당하는 hex code로 된다. `never` 타입으로 return 이 없다는 것을 명시적으로 선언해주었기 때문에 상위 함수 return에 void가 사라진 것이다.
+
+`never` 타입을 사용하면 좋은 case가 또 하나 있다.
