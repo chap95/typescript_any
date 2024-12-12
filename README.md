@@ -194,5 +194,3 @@ function noToConvertToHEX(color: string): never {
 }
 ```
 이렇게 해주면 `getColorHEXCode`의 return 타입이 지원하는 color에 해당하는 hex code로 된다. `never` 타입으로 return 이 없다는 것을 명시적으로 선언해주었기 때문에 상위 함수 return에 void가 사라진 것이다.
-
-`never` 타입을 사용하면 좋은 case가 또 하나 있다.
